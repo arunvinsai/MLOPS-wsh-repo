@@ -1,0 +1,40 @@
+trigger:
+  branches:
+    include:
+      - 'master'
+  
+name: 'ci_pipeline'
+jobs:
+- job: 'ci_pipeline_job'
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.7'
+      architecture: 'x64'
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install pytest mock codecov pydocstyle pytest-cov pylint pylint_junit
+    displayName: 'Install testing dependencies'
+
+  - task: Bash@3
+    displayName: 'Install project requirements'
+    inputs:
+      filePath: 'package_requirement/install_requirements.sh'
+      workingDirectory: 'package_requirement'
+  
+  - task: Bash@3
+    displayName: data test
+    inputs:
+      targetType: 'inline'
+      script: 'pytest training/train_test.py --doctest-modules --junitxml=unit-testresults.xml --cov=data_test --cov-append --cov-report=xml:coverage.xml --cov-report=html:htmlcov'
+  
+  - task: PublishTestResults@2
+    displayName: 'Publish unit test results'
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/test-*.xml'
+    condition: succeededOrFailed()
